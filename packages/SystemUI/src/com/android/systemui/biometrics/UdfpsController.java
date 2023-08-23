@@ -110,6 +110,8 @@ import javax.inject.Provider;
 
 import kotlin.Unit;
 
+import vendor.xiaomi.hw.touchfeature.V1_0.ITouchFeature;
+
 /**
  * Shows and hides the under-display fingerprint sensor (UDFPS) overlay, handles UDFPS touch events,
  * and toggles the UDFPS display mode.
@@ -220,6 +222,24 @@ public class UdfpsController implements DozeReceiver, Dumpable {
     private final ScreenLifecycle.Observer mScreenObserver = new ScreenLifecycle.Observer() {
         @Override
         public void onScreenTurnedOn() {
+            Log.i("PHH-Enroll", "onScreenTurnedOff: UNLOCKED");
+            final Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    Log.i("PHH-Enroll", "inside handler");
+                    try {
+                        var res = ITouchFeature.getService().setTouchMode(0, 10, 0);
+                        if(res != 0){
+                            Log.d("PHH-Enroll", "SetTouchMode 10,0 was NOT executed successfully. Res is " + res);
+                        }
+                    }catch (Exception e){
+                        Log.i("PHH-Enroll", "ITouchFeature setTouchMode eror: ", e);
+
+                    }
+                }
+            }, 800);
+
             mScreenOn = true;
             if (mAodInterruptRunnable != null) {
                 mAodInterruptRunnable.run();
@@ -229,6 +249,17 @@ public class UdfpsController implements DozeReceiver, Dumpable {
 
         @Override
         public void onScreenTurnedOff() {
+            Log.i("PHH-Enroll", "onScreenTurnedOff: LOCKED");
+            try {
+                var res = ITouchFeature.getService().setTouchMode(0, 10, 1);
+
+                if(res != 0){
+                    Log.d("PHH-Enroll", "SetTouchMode 10,1 was NOT executed successfully. Res is " + res);
+                }
+            }catch (Exception e){
+                Log.i("PHH-Enroll", "ITouchFeature setTouchMode eror: ", e);
+
+            }
             mScreenOn = false;
         }
     };
@@ -301,9 +332,11 @@ public class UdfpsController implements DozeReceiver, Dumpable {
                 boolean acquiredVendor = acquiredInfo == FINGERPRINT_ACQUIRED_VENDOR;
                 final boolean isAodEnabled = mAmbientDisplayConfiguration.alwaysOnEnabled(UserHandle.USER_CURRENT);
                 final boolean isShowingAmbientDisplay = mStatusBarStateController.isDozing() && mScreenOn;
-
-                if (acquiredVendor && ((mScreenOffFod && !mScreenOn) || (isAodEnabled && isShowingAmbientDisplay))) {
-                    if (vendorCode == mUdfpsVendorCode) {
+                final boolean isDozing = mStatusBarStateController.isDozing() || !mScreenOn;
+                if (!mScreenOn || acquiredVendor && vendorCode == mUdfpsVendorCode) {
+                    if (!mScreenOn ||
+                            (mScreenOffFod && isDozing) /** Screen off and dozing */ ||
+                            (mKeyguardUpdateMonitor.isDreaming() && mScreenOn) /** AOD or pulse */) {
                         mPowerManager.wakeUp(mSystemClock.uptimeMillis(),
                                 PowerManager.WAKE_REASON_GESTURE, TAG);
                         onAodInterrupt(0, 0, 0, 0);
