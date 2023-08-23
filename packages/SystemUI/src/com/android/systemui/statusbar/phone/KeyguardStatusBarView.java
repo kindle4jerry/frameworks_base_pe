@@ -30,6 +30,7 @@ import android.os.Trace;
 import android.util.AttributeSet;
 import android.util.Pair;
 import android.util.TypedValue;
+import android.os.SystemProperties;
 import android.view.DisplayCutout;
 import android.view.Gravity;
 import android.view.View;
@@ -195,8 +196,6 @@ public class KeyguardStatusBarView extends RelativeLayout {
                 R.dimen.ongoing_appops_dot_min_padding);
         mCutoutSideNudge = getResources().getDimensionPixelSize(
                 R.dimen.display_cutout_margin_consumption);
-        mRoundedCornerPadding = res.getDimensionPixelSize(
-                R.dimen.rounded_corner_content_padding);
     }
 
     private void updateVisibilities() {
